@@ -89,11 +89,12 @@ class DB_Dump(object):
 
 class S3Client:
     def __init__(self, endpoint_url, access_key, secret_key,
-                 data_bucket):
+                 data_bucket, s3_region='eu-west-1'):
         self.endpoint_url = endpoint_url
         self.__access_key = access_key
         self.__secret_key = secret_key
         self.data_bucket = data_bucket
+        self.s3_region = s3_region
 
         # state
         self.__client = self.__connect()
@@ -104,8 +105,7 @@ class S3Client:
         return boto3.client('s3',
                             aws_access_key_id=self.__access_key,
                             aws_secret_access_key=self.__secret_key,
-                            use_ssl=False,
-                            endpoint_url=self.endpoint_url)
+                            region_name=self.s3_region)
 
     @classmethod
     def __get_bucket_names(cls, client):
@@ -202,6 +202,7 @@ def main():
     s3_data_bucket = cfg['s3_data_bucket']
     s3_access_key = cfg['s3_access_key'] if config.has_option(None, 's3_access_key') else None
     s3_secret_key = cfg['s3_secret_key'] if config.has_option(None, 's3_secret_key') else None
+    s3_region = cfg['s3_region'] if config.has_option(None, 's3_region') else 'eu-west-1'
     backup_file_prefix = cfg['backup_file_prefix']
     backup_output_dir = cfg['backup_output_dir']
     dumper = DB_Dump(db_user, db_password, host=db_host, port=db_port, dump_filename_prefix=backup_file_prefix, output_dir=backup_output_dir)
@@ -209,7 +210,7 @@ def main():
     output_filename = dumper.dump_db(db_name)
     log_main.info("\t- successfully dumped to file '{}'".format(output_filename))
 
-    client = S3Client(s3_endpoint_url, s3_access_key, s3_secret_key, s3_data_bucket)
+    client = S3Client(s3_endpoint_url, s3_access_key, s3_secret_key, s3_data_bucket, s3_region)
     log_main.info("Setting up buckets...")
     client.setup()
     log_main.info("Uploading file '{}' to s3 at endpoint '{}'...".format(output_filename, s3_endpoint_url))
